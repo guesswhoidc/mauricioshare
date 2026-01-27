@@ -9,6 +9,7 @@ import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import notifier from 'node-notifier';
+import {exec} from 'node:child_process';
 
 const APP_NAME = process.env['APP_NAME'] ?? "APP_NAME";
 const PORT = process.env['PORT'] ?? "3290";
@@ -18,6 +19,12 @@ function appNotify(message : string) {
     return;
   }
   console.log(`notify: ${APP_NAME}: ${message}`);
+  if (process.env['NOTIFY'] === 'POPOS') {
+    // Hack to show notifications on POPOS since the notifier dependency doesn't seem to work
+    exec(`gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.Notify "${APP_NAME}" 0 "" "${message.replace('"', "")}" "{}" '[]' '{"urgency": <1>}' 5000`)
+    return
+  }
+
   notifier.notify({
     title: `${APP_NAME} Back-End server`,
     message
@@ -39,7 +46,7 @@ fastify.register(multipart, {
 fastify.register(sensible, {
   "sharedSchemaId": 'HttpError',
 });
-fastify.register(cors, {origin: '*'});
+fastify.register(cors, {origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']});
 
 const UPLOAD_PATH : string = process.env['UPLOAD_PATH'] ?? "";
 
@@ -61,16 +68,24 @@ fastify.register(fastifyStatic, {
   prefix: '/files/',
 })
 
+interface FileInfo {
+  fileName: string,
+  fileSize: number,
+  createdAt: number
+}
+
 fastify.get('/files', async (_request, _reply) => {
   const files = await fsPromises.readdir(UPLOAD_PATH);
-  const result = [];
+  const result : FileInfo[] = [];
   for(let fileName of files) {
+    const stats = await fsPromises.stat(uploadPathJoin(fileName))
     result.push({
       fileName,
-      fileSize: (await fsPromises.stat(uploadPathJoin(fileName))).size
+      fileSize: stats.size,
+      createdAt: stats.birthtimeMs,
     });
   }
-  return result;
+  return result.sort((a, b) => b.createdAt - a.createdAt);
 });
 
 fastify.post('/save', async (request, reply) => {
@@ -84,7 +99,7 @@ fastify.post('/save', async (request, reply) => {
     // The file being uploaded already exists, writing a copy
     const ext = path.extname(fileName);
     const base = path.basename(fileName, ext);
-    fileName = `${base}.${randomUUID()}${ext}`;
+    fileName = uploadPathJoin(`${base}.${randomUUID()}${ext}`);
   } catch (_) {
     // Don't do anything, file doesn't exist, creating a new one
   }
@@ -93,9 +108,31 @@ fastify.post('/save', async (request, reply) => {
   return {status: 'ok'};
 });
 
+interface FileNameParams {
+  fileName: string | null
+}
+
+fastify.delete('/delete/:fileName', async (request, reply) => {
+  const params = request.params;
+
+  if (typeof params !== 'object' || !params) return reply.badRequest();
+
+  const requestFileName = (params as FileNameParams)['fileName'];
+
+  if (typeof requestFileName !== 'string') return reply.badRequest();
+  
+  const fileName = uploadPathJoin(path.basename(requestFileName));
+  try {
+    await fsPromises.unlink(fileName);
+    return {status: 'ok'};
+  } catch (_err) {
+    return reply.internalServerError(`Couldn't delete the file: ${requestFileName}`);
+  }
+})
+
 try {
   appNotify("Ready to run");
-  await fastify.listen({port: PORT, host:'0.0.0.0'});
+  fastify.listen({port: PORT, host:'0.0.0.0'});
 } catch (err) {
   fastify.log.error(err);
   appNotify("Server Crashed");

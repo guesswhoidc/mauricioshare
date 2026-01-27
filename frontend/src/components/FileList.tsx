@@ -4,7 +4,8 @@ import './FileList.css';
 
 export type FileListing = {
   fileName: string,
-  fileSize: number
+  fileSize: number,
+  createdAt: number
 };
 
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -40,7 +41,19 @@ export default function FileList({cacheVersion} : {cacheVersion : number}) {
       setFiles([...obj]);
     }).catch(setError).finally(setIsPending.bind(null, false));
   };
+
   useEffect(loadList, [cacheVersion]);
+
+  const deleteFile = (fileName : string) => () => {
+    if(!confirm("Tem Certeza?")) return;
+    setIsPending(true);
+    fetch(fileServerJoin('delete', fileName), {
+      method: 'DELETE'
+    }).then(() => {
+      setIsPending(false);
+      setFiles(files.filter((file) => file.fileName !== fileName));
+    }).catch(setError);
+  }
 
   if(error) return (<p>Error Loading Files: {error.message}</p>);
   if(isPending) return (<p>Loading...</p>);
@@ -53,7 +66,7 @@ export default function FileList({cacheVersion} : {cacheVersion : number}) {
         <ul className="FileListActions">
           <li><a href={fileServerJoin('files',fileName)}>Abrir</a></li>
           <li><button>Renomear</button></li>
-          <li><button className="delete">x</button></li>
+          <li><button onClick={deleteFile(fileName)} className="delete">x</button></li>
         </ul>
       </div>
     </div>
