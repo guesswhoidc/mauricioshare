@@ -19,8 +19,13 @@ const formatBytes = (bytes: number, decimals = 2) => {
 const ImageExtensions = ['png', 'jpg', 'jpeg', 'gif'];
 
 function FilePreview({fileName} : {fileName: string}) {
+  const [active, setActive] = useState<boolean>(false);
+  const classes = ["FileListPreview"]
+  if(active) {
+    classes.push("active")
+  }
   if (ImageExtensions.includes((fileName.split('.').pop() ?? '').toLowerCase())) {
-    return (<div className="FileListPreview"><img src={fileServerJoin('files', fileName)} /></div>);
+    return (<div onClick={() => setActive((v) => !v )} className={classes.join(' ')}><img src={fileServerJoin('files', fileName)} /></div>);
   }
   return (<></>);
 }

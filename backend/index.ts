@@ -31,7 +31,11 @@ const fastify = Fastify({
   logger: true
 })
 
-fastify.register(multipart);
+fastify.register(multipart, {
+  limits: {
+    fileSize: 100 * 1024 * 1024,
+  }
+});
 fastify.register(sensible, {
   "sharedSchemaId": 'HttpError',
 });

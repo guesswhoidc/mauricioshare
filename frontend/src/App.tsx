@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FileList from './components/FileList';
 import { fileServerJoin, AppName } from './setup';
 import './App.css'
@@ -19,6 +19,9 @@ function App() {
     .then((r) => console.log(r))
     .then(() => setCache((v : number) => v + 1))
   }
+  useEffect(() => {
+    document.title = AppName
+  },[])
 
   return (
     <>
