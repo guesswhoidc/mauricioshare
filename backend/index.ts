@@ -91,11 +91,10 @@ fastify.delete('/delete/:fileName', async (request, reply) => {
   }
 })
 
-try {
-  appNotify("Ready to run");
-  await fastify.listen({port: PORT, host:'0.0.0.0'});
-} catch (err) {
+fastify.listen({port: Number(PORT), host:'0.0.0.0'}, (err, _address) => {
+  appNotify("Backend is Running");
+  if (!err) return;   
   fastify.log.error(err);
   appNotify("Server Crashed");
   process.exit(1); // look up what process exiting with 1 means
-}
+});
