@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
 import sensible from '@fastify/sensible';
 import fastifyStatic from '@fastify/static';
+import cors from '@fastify/cors';
 import { createWriteStream } from 'node:fs';
 import fsPromises from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
@@ -34,6 +35,7 @@ fastify.register(multipart);
 fastify.register(sensible, {
   "sharedSchemaId": 'HttpError',
 });
+fastify.register(cors, {origin: '*'});
 
 const UPLOAD_PATH : string = process.env['UPLOAD_PATH'] ?? "";
 
@@ -56,8 +58,15 @@ fastify.register(fastifyStatic, {
 })
 
 fastify.get('/files', async (_request, _reply) => {
-  const files = await fsPromises.readdir(UPLOAD_PATH)
-  return files
+  const files = await fsPromises.readdir(UPLOAD_PATH);
+  const result = [];
+  for(let fileName of files) {
+    result.push({
+      fileName,
+      fileSize: (await fsPromises.stat(uploadPathJoin(fileName))).size
+    });
+  }
+  return result;
 });
 
 fastify.post('/save', async (request, reply) => {
@@ -82,7 +91,7 @@ fastify.post('/save', async (request, reply) => {
 
 try {
   appNotify("Ready to run");
-  await fastify.listen({port: PORT});
+  await fastify.listen({port: PORT, host:'0.0.0.0'});
 } catch (err) {
   fastify.log.error(err);
   appNotify("Server Crashed");
