@@ -8,35 +8,12 @@ import fsPromises from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import notifier from 'node-notifier';
-import {exec} from 'node:child_process';
-
-const APP_NAME = process.env['APP_NAME'] ?? "APP_NAME";
-const PORT = process.env['PORT'] ?? "3290";
-
-function appNotify(message : string) {
-  if (!process.env['NOTIFY']) {
-    return;
-  }
-  console.log(`notify: ${APP_NAME}: ${message}`);
-  if (process.env['NOTIFY'] === 'POPOS') {
-    // Hack to show notifications on POPOS since the notifier dependency doesn't seem to work
-    exec(`gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.Notify "${APP_NAME}" 0 "" "${message.replace('"', "")}" "{}" '[]' '{"urgency": <1>}' 5000`)
-    return
-  }
-
-  notifier.notify({
-    title: `${APP_NAME} Back-End server`,
-    message
-  });
-}
-if (!process.env['NOTIFY']) {
-  console.info("Set the environment variable NOTIFY=true to get desktop notifications");
-}
+import { PORT, UPLOAD_PATH, uploadPathJoin } from './config.ts';
+import { appNotify } from './notifications.ts';
 
 const fastify = Fastify({
   logger: true
-})
+});
 
 fastify.register(multipart, {
   limits: {
@@ -47,22 +24,6 @@ fastify.register(sensible, {
   "sharedSchemaId": 'HttpError',
 });
 fastify.register(cors, {origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']});
-
-const UPLOAD_PATH : string = process.env['UPLOAD_PATH'] ?? "";
-
-try {
-  if (!UPLOAD_PATH) {
-    throw "please set a UPLOAD_PATH on your environment variables";
-  }
-
-  await fsPromises.access(UPLOAD_PATH, fsPromises.constants.R_OK | fsPromises.constants.W_OK);
-} catch (err) {
-  console.error("Couldn't get access to the UPLOAD_PATH: ", err);
-  process.exit(1);
-}
-
-const uploadPathJoin = path.join.bind(null, UPLOAD_PATH);
-
 fastify.register(fastifyStatic, {
   root: UPLOAD_PATH,
   prefix: '/files/',
@@ -132,7 +93,7 @@ fastify.delete('/delete/:fileName', async (request, reply) => {
 
 try {
   appNotify("Ready to run");
-  fastify.listen({port: PORT, host:'0.0.0.0'});
+  await fastify.listen({port: PORT, host:'0.0.0.0'});
 } catch (err) {
   fastify.log.error(err);
   appNotify("Server Crashed");
