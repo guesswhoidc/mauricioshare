@@ -1,6 +1,8 @@
 # Mauricio Share
 # DO NOT USE THIS IN PRODUCTION
 
+![Preview](docs/Preview.png)
+
 A small application for uploading files in a home network.
 it's made to be a easy way to both send and download files inside a home network,
 not safe at all to be used over the internet.
@@ -60,3 +62,9 @@ VITE_APP_NAME='Name of the App'
 VITE_FILESERVER_ADDRESS=http://localhost:3290
 
 ```
+
+---
+
+### TODO:
+
+ - Make the rename file functionality.
