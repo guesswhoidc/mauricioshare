@@ -2,7 +2,7 @@ import path from "node:path";
 import fsPromises from "node:fs/promises";
 
 export const APP_NAME = process.env['APP_NAME'] ?? "APP_NAME";
-export const PORT = process.env['PORT'] ?? "3290";
+export const PORT = process.env['BACKEND_PORT'] ?? "3290";
 export const UPLOAD_PATH : string = process.env['UPLOAD_PATH'] ?? "";
 
 try {
