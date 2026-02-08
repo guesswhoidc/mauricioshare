@@ -6,7 +6,7 @@ import './App.css'
 function App() {
   const [cache, setCache] = useState(0);
   const uploadFile = (e : React.ChangeEvent) => {
-    const fileInput : HTMLInputElement = e.target;
+    const fileInput = e.currentTarget as HTMLInputElement;
     if(!fileInput.files) return;
     const file = fileInput.files[0];
     const formData = new FormData();
